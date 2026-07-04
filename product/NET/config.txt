@@ -1,0 +1,5 @@
+# Namvaran Excel Tracker - Configuration
+# Change these paths to match your computer
+
+SOURCE_PATH = D:\Behnam\NET\simulation\fs
+COMMIT_PATH = D:\Behnam\NET\simulation\fs - files

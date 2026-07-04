@@ -1,0 +1,6 @@
+simulation/
+__pycache__/
+*.pyc
+deploy/build_work/
+desktop.ini
+.claude/

@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namvaran Excel Tracker (NET)</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Consolas, monospace;
+            background: #080810;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 24px 12px;
+            background-image:
+                linear-gradient(rgba(0,200,255,0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,200,255,0.07) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow: hidden;
+        }
+
+        /* ── Boot / loading splash ── */
+        #bootSplash {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: #050508;
+            background-image:
+                linear-gradient(rgba(0,200,255,0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,200,255,0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 34px;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #bootSplash.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .boot-db-wrap {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .boot-db-icon {
+            filter: drop-shadow(0 0 16px rgba(0,200,255,0.5));
+            animation: boot-db-float 2.6s ease-in-out infinite;
+        }
+
+        @keyframes boot-db-float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-5px); }
+        }
+
+        .db-rim   { animation: boot-db-glow 1.8s ease-in-out infinite; }
+        .db-band-1{ animation: boot-db-glow 1.8s ease-in-out infinite; animation-delay: 0s; }
+        .db-band-2{ animation: boot-db-glow 1.8s ease-in-out infinite; animation-delay: 0.3s; }
+        .db-band-3{ animation: boot-db-glow 1.8s ease-in-out infinite; animation-delay: 0.6s; }
+
+        @keyframes boot-db-glow {
+            0%, 100% { opacity: 0.55; }
+            50%      { opacity: 1; }
+        }
+
+        .boot-db-scanline {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            height: 3px;
+            top: 14%;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            filter: drop-shadow(0 0 6px #00ff88);
+            animation: boot-db-scan 2.2s ease-in-out infinite;
+            border-radius: 2px;
+        }
+
+        @keyframes boot-db-scan {
+            0%   { top: 14%; opacity: 0; }
+            10%  { opacity: 1; }
+            50%  { top: 80%; opacity: 1; }
+            90%  { opacity: 0; }
+            100% { top: 80%; opacity: 0; }
+        }
+
+        .boot-log {
+            width: 340px;
+            max-width: 78vw;
+            border: 1px solid rgba(0,200,255,0.15);
+            border-radius: 8px;
+            background: rgba(0,200,255,0.03);
+            padding: 12px 16px;
+            font-family: Consolas, monospace;
+            font-size: 0.72rem;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            box-shadow: 0 0 20px rgba(0,200,255,0.08);
+        }
+
+        .boot-log-line {
+            opacity: 0;
+            transform: translateY(4px);
+            animation: boot-log-in 0.4s ease forwards;
+            letter-spacing: 0.3px;
+        }
+
+        .boot-log-line.l1 { animation-delay: 0.3s; color: #7fd8ff; }
+        .boot-log-line.l2 { animation-delay: 1.5s; color: #ff77c8; }
+        .boot-log-line.l3 { animation-delay: 2.7s; color: #7fffb0; }
+        .boot-log-line.l4 { animation-delay: 3.9s; color: #ffd76a; }
+
+        @keyframes boot-log-in {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .boot-text {
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: #00c8ff;
+            text-shadow: 0 0 16px rgba(0,200,255,0.7), 0 0 40px rgba(0,200,255,0.3);
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .boot-dots span {
+            animation: boot-dot-fade 1.4s infinite;
+            opacity: 0;
+        }
+
+        .boot-dots span:nth-child(1) { animation-delay: 0s; }
+        .boot-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .boot-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes boot-dot-fade {
+            0%, 20%   { opacity: 0; }
+            50%       { opacity: 1; }
+            100%      { opacity: 0; }
+        }
+
+        .boot-bar-track {
+            width: 320px;
+            max-width: 70vw;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(0,200,255,0.1);
+            overflow: hidden;
+        }
+
+        .boot-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #00c8ff, #00ff88);
+            box-shadow: 0 0 12px rgba(0,200,255,0.6);
+            animation: boot-bar-fill 5s linear forwards;
+        }
+
+        @keyframes boot-bar-fill {
+            from { width: 0%; }
+            to   { width: 100%; }
+        }
+
+        /* ── Header ── */
+        header { text-align: center; margin-bottom: 16px; flex-shrink: 0; }
+
+        .header-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .header-logo {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #00c8ff;
+            text-shadow: 0 0 16px rgba(0,200,255,0.7), 0 0 40px rgba(0,200,255,0.3);
+        }
+
+        .root-path {
+            margin-top: 10px;
+            font-size: 0.72rem;
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        /* ── Grid layout ── */
+        .grid-wrapper {
+            flex: 1;
+            display: grid;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .row {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .middle-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 28px;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .side-col {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: center;
+        }
+
+        /* ── Frame ── */
+        .frame {
+            border-radius: 10px;
+            padding: 14px 36px 36px;
+            min-width: 260px;
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(4px);
+            transition: box-shadow 0.3s, border-color 0.3s;
+        }
+
+        .frame-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .frame-title svg {
+            flex-shrink: 0;
+            opacity: 0.9;
+        }
+
+        .subfolders { display: flex; flex-direction: column; gap: 8px; }
+
+        .subfolder-box {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: 10px 18px;
+            margin: 16px 0;
+            text-align: center;
+            font-size: 0.86rem;
+            letter-spacing: 0.5px;
+            color: #aaa;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.2s;
+            cursor: default;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .subfolder-box.box-selected {
+            border-color: #00c8ff !important;
+            box-shadow: 0 0 10px rgba(0,200,255,0.4);
+            color: #fff !important;
+        }
+
+        .empty-note {
+            color: #2a2a2a;
+            font-size: 0.72rem;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #0e0e1a;
+            border-radius: 12px;
+            min-width: 420px;
+            max-width: 620px;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 28px 32px 12px;
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            flex: 1;
+            text-align: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 1.4rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover { color: #e0e0e0; }
+
+        .modal-path {
+            font-size: 0.68rem;
+            color: #444;
+            letter-spacing: 0.5px;
+            padding: 12px 32px 0;
+            flex-shrink: 0;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            min-height: 0;
+            padding: 16px 32px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-left: 2px solid currentColor;
+            padding-left: 8px;
+        }
+
+        .section-incharge {
+            color: #00c8ff;
+            text-shadow: 0 0 8px rgba(0,200,255,0.5);
+        }
+
+        .section-commits {
+            color: #00ff88;
+            text-shadow: 0 0 8px rgba(0,255,136,0.5);
+        }
+
+        .section-notification {
+            color: #ff9500;
+            text-shadow: 0 0 8px rgba(255,149,0,0.5);
+        }
+
+        .notif-table-wrap {
+            overflow: auto;
+            border-radius: 6px;
+            border: 1px solid rgba(255,149,0,0.12);
+            max-height: 220px;
+        }
+
+        .notif-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .notif-table th {
+            background: rgba(255,149,0,0.05);
+            color: #888;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 8px 14px;
+            border-bottom: 1px solid rgba(255,149,0,0.18);
+            text-align: center;
+        }
+
+        .notif-table td {
+            padding: 7px 14px;
+            color: #ccc;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            text-align: center;
+        }
+
+        .notif-table tr:last-child td { border-bottom: none; }
+        .notif-table tr:hover td { background: rgba(255,149,0,0.04); }
+
+        .modal-divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            margin: 4px 0;
+        }
+
+        .person-list, .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .person-item {
+            padding: 4px 12px;
+            border: 1px solid rgba(0,200,255,0.15);
+            border-radius: 4px;
+            font-size: 0.82rem;
+            color: #888;
+            background: rgba(0,200,255,0.03);
+            letter-spacing: 0.3px;
+            text-align: center;
+            width: 50%;
+        }
+
+        .person-list {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .file-item {
+            padding: 7px 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 6px;
+            font-size: 0.78rem;
+            color: #aaa;
+            background: rgba(255,255,255,0.02);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .download-btn {
+            color: #00ff88;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+            line-height: 1;
+            text-decoration: none;
+        }
+
+        .download-btn:hover {
+            opacity: 1;
+        }
+
+        .folder-item {
+            color: #ffcf70;
+        }
+
+        .folder-item .file-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .list-empty {
+            font-size: 0.75rem;
+            color: #333;
+            font-style: italic;
+            text-align: center;
+            padding: 12px 0;
+        }
+
+        /* Connection modal */
+        .conn-modal {
+            background: #0e0e1a;
+            border-radius: 12px;
+            padding: 32px;
+            min-width: 600px;
+            max-width: 90vw;
+            max-height: 75vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .conn-table-wrap {
+            overflow: auto;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .conn-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .conn-table th {
+            background: rgba(255,255,255,0.05);
+            color: #888;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 8px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: center;
+        }
+
+        .conn-table td {
+            padding: 7px 14px;
+            color: #ccc;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            text-align: center;
+        }
+
+        .conn-table tr:last-child td { border-bottom: none; }
+        .conn-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* Dark scrollbars */
+        .conn-table-wrap, .notif-table-wrap, .modal-body {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.12) transparent;
+        }
+        .conn-table-wrap::-webkit-scrollbar,
+        .notif-table-wrap::-webkit-scrollbar,
+        .modal-body::-webkit-scrollbar { width: 6px; height: 6px; }
+        .conn-table-wrap::-webkit-scrollbar-track,
+        .notif-table-wrap::-webkit-scrollbar-track,
+        .modal-body::-webkit-scrollbar-track { background: transparent; }
+        .conn-table-wrap::-webkit-scrollbar-thumb,
+        .notif-table-wrap::-webkit-scrollbar-thumb,
+        .modal-body::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.12);
+            border-radius: 4px;
+        }
+        .conn-table-wrap::-webkit-scrollbar-thumb:hover,
+        .notif-table-wrap::-webkit-scrollbar-thumb:hover,
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* Process center frame */
+        .frame.process {
+            min-width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="bootSplash">
+    <div class="boot-db-wrap">
+        <svg class="boot-db-icon" viewBox="0 0 24 24" width="110" height="110" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path class="db-band db-band-1" d="M3,5 A9,3 0 0,0 21,5 L21,9.67 A9,3 0 0,1 3,9.67 Z"
+                  fill="#00c8ff" fill-opacity="0.22" stroke="#00c8ff" stroke-opacity="0.7"/>
+            <path class="db-band db-band-2" d="M3,9.67 A9,3 0 0,0 21,9.67 L21,14.33 A9,3 0 0,1 3,14.33 Z"
+                  fill="#ff0080" fill-opacity="0.22" stroke="#ff0080" stroke-opacity="0.7"/>
+            <path class="db-band db-band-3" d="M3,14.33 A9,3 0 0,0 21,14.33 L21,19 A9,3 0 0,1 3,19 Z"
+                  fill="#00ff88" fill-opacity="0.22" stroke="#00ff88" stroke-opacity="0.7"/>
+            <ellipse class="db-rim" cx="12" cy="5" rx="9" ry="3" fill="rgba(0,200,255,0.22)" stroke="#00c8ff"/>
+        </svg>
+        <div class="boot-db-scanline"></div>
+    </div>
+    <div class="boot-text">
+        <span>Analyzing the Database</span>
+        <span class="boot-dots"><span>.</span><span>.</span><span>.</span></span>
+    </div>
+    <div class="boot-log">
+        <div class="boot-log-line l1">&gt; scanning structure of repositories...</div>
+        <div class="boot-log-line l2">&gt; reading Setting.xlsx (Access / Fetch / Notification)...</div>
+        <div class="boot-log-line l3">&gt; resolving workflows between repositories...</div>
+        <div class="boot-log-line l4">&gt; rendering flowchart...</div>
+    </div>
+    <div class="boot-bar-track"><div class="boot-bar-fill"></div></div>
+</div>
+
+<header>
+    <div class="header-inner">
+        <img src="/static/favicon.ico" class="header-logo" alt="logo">
+        <h1>Namvaran Excel Tracker (NET)</h1>
+    </div>
+    <div class="root-path">{{ root }}</div>
+</header>
+
+{% macro folder_icon(name) %}
+{% set n = name | lower %}
+{% if 'pip' in n %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="5" cy="12" rx="2" ry="5"/>
+  <ellipse cx="19" cy="12" rx="2" ry="5"/>
+  <line x1="5" y1="7" x2="19" y2="7"/>
+  <line x1="5" y1="17" x2="19" y2="17"/>
+</svg>
+{% elif 'process' in n %}
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="3"/>
+  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+</svg>
+{% elif 'instr' in n %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <polyline points="2 12 6 12 8 5 11 19 14 9 16 15 18 12 22 12"/>
+</svg>
+{% elif 'mech' in n %}
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+</svg>
+{% endif %}
+{% endmacro %}
+
+{% macro render_frame(f) %}
+<div class="frame" style="
+    border: 2px solid {{ f.color.border }};
+    box-shadow: 0 0 20px {{ f.color.glow }}, inset 0 0 20px rgba(0,0,0,0.4);
+" onmouseover="this.style.boxShadow='0 0 40px {{ f.color.glow }}, inset 0 0 20px rgba(0,0,0,0.4)';"
+   onmouseout="this.style.boxShadow='0 0 20px {{ f.color.glow }}, inset 0 0 20px rgba(0,0,0,0.4)';">
+    <div class="frame-title" style="
+        color: {{ f.color.text }};
+        border-bottom: 1px solid {{ f.color.border }};
+        text-shadow: 0 0 8px {{ f.color.glow }};
+    ">{{ folder_icon(f.name) }}{{ f.name }}</div>
+    <div class="subfolders">
+        {% if f.subfolders %}
+            {% for sub in f.subfolders %}
+            <div class="subfolder-box"
+                 data-parent="{{ f.name }}"
+                 data-sub="{{ sub.name }}"
+                 data-color="{{ f.color.text }}"
+                 onclick="selectBox(this)" ondblclick="openFiles(this)"
+                 onmouseover="this.style.borderColor='{{ f.color.border }}'; this.style.color='#e0e0e0'; this.style.background='{{ f.color.glow }}';"
+                 onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.color='#888'; this.style.background='rgba(255,255,255,0.02)';">{{ sub.name }}</div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-note">No subfolders</div>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+<div class="grid-wrapper">
+
+    <!-- Top row -->
+    <div class="row">
+        {% for f in top %}
+        {{ render_frame(f) }}
+        {% endfor %}
+    </div>
+
+    <!-- Middle row: left | Process | right -->
+    <div class="middle-row">
+
+        <div class="side-col">
+            {% for f in left %}
+            {{ render_frame(f) }}
+            {% endfor %}
+        </div>
+
+        {% if process %}
+        <div class="frame process" style="
+            border: 2px solid {{ process.color.border }};
+            box-shadow: 0 0 30px {{ process.color.glow }}, inset 0 0 20px rgba(0,0,0,0.4);
+        ">
+            <div class="frame-title" style="
+                color: {{ process.color.text }};
+                border-bottom: 1px solid {{ process.color.border }};
+                text-shadow: 0 0 8px {{ process.color.glow }};
+            ">{{ folder_icon(process.name) }}{{ process.name }}</div>
+            <div class="subfolders">
+                {% if process.subfolders %}
+                    {% for sub in process.subfolders %}
+                    <div class="subfolder-box"
+                         data-parent="{{ process.name }}"
+                         data-sub="{{ sub.name }}"
+                         data-color="{{ process.color.text }}"
+                         onclick="selectBox(this)" ondblclick="openFiles(this)"
+                         onmouseover="this.style.borderColor='{{ process.color.border }}'; this.style.color='#e0e0e0'; this.style.background='{{ process.color.glow }}';"
+                         onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'; this.style.color='#888'; this.style.background='rgba(255,255,255,0.02)';">{{ sub.name }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-note">No subfolders</div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        <div class="side-col">
+            {% for f in right %}
+            {{ render_frame(f) }}
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <!-- Bottom row -->
+    <div class="row">
+        {% for f in bottom %}
+        {{ render_frame(f) }}
+        {% endfor %}
+    </div>
+
+</div>
+
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modalTitle"></div>
+            <button class="modal-close" onclick="closeModalDirect()">×</button>
+        </div>
+        <div class="modal-path" id="modalPath"></div>
+
+        <div class="modal-body">
+            <div id="inChargeSection">
+                <div class="modal-section-title section-incharge">In Charge</div>
+                <div class="person-list" id="personList"></div>
+                <hr class="modal-divider">
+            </div>
+
+            <div class="modal-section-title section-commits">Commits</div>
+            <div class="file-list" id="fileList"></div>
+
+            <div id="notificationSection">
+                <hr class="modal-divider">
+                <div class="modal-section-title section-notification">Notification</div>
+                <div class="notif-table-wrap" id="notifTableWrap">
+                    <table class="notif-table">
+                        <thead id="notifThead"></thead>
+                        <tbody id="notifTbody"></tbody>
+                    </table>
+                </div>
+                <div class="list-empty" id="notifEmpty" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connection modal -->
+<div class="modal-overlay" id="connOverlay" onclick="closeConnModal(event)">
+    <div class="conn-modal">
+        <div class="modal-header">
+            <div class="modal-title" id="connTitle"></div>
+            <button class="modal-close" onclick="document.getElementById('connOverlay').classList.remove('open')">×</button>
+        </div>
+        <div class="modal-path" id="connPath"></div>
+        <div class="conn-table-wrap">
+            <table class="conn-table">
+                <thead id="connThead"></thead>
+                <tbody id="connTbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Arrow SVG layer -->
+<svg id="arrow-layer" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50;">
+    <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6"
+                refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="context-stroke" opacity="0.8"/>
+        </marker>
+    </defs>
+</svg>
+
+<script>
+    setTimeout(() => {
+        document.getElementById('bootSplash').classList.add('hidden');
+    }, 5000);
+
+    function findBox(key) {
+        const slash    = key.indexOf('/');
+        const parent   = key.substring(0, slash);
+        const sub      = key.substring(slash + 1);
+        return document.querySelector(`[data-parent="${parent}"][data-sub="${sub}"]`);
+    }
+
+    // ── Arrow drawing ──────────────────────────────────────────────────────
+
+    // Rule 1+3: segment collision helpers (strict inequality — edges don't count as crossing)
+    function hSegCrossesRect(y, x1, x2, rect) {
+        const xMin = Math.min(x1, x2), xMax = Math.max(x1, x2);
+        return y > rect.top && y < rect.bottom && xMax > rect.left && xMin < rect.right;
+    }
+    function vSegCrossesRect(x, y1, y2, rect) {
+        const yMin = Math.min(y1, y2), yMax = Math.max(y1, y2);
+        return x > rect.left && x < rect.right && yMax > rect.top && yMin < rect.bottom;
+    }
+
+    // Rule 4: determine which edge to exit from
+    function getExitEdge(srcRect, dstRect, sameFrame) {
+        if (sameFrame) {
+            const srcCy = srcRect.top  + srcRect.height / 2;
+            const dstCy = dstRect.top  + dstRect.height / 2;
+            return dstCy < srcCy ? 'top' : 'bottom';
+        }
+        const srcCx = srcRect.left + srcRect.width  / 2;
+        const dstCx = dstRect.left + dstRect.width  / 2;
+        return dstCx <= srcCx ? 'left' : 'right';
+    }
+
+    const OPPOSITE = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' };
+
+    // Rule 6: entry edge depends on spatial relationship
+    function getEntryEdge(exitEdge, srcRect, dstRect, sameFrame) {
+        if (sameFrame) return OPPOSITE[exitEdge];
+        const dx = Math.abs((dstRect.left + dstRect.width  / 2) - (srcRect.left + srcRect.width  / 2));
+        const dy = Math.abs((dstRect.top  + dstRect.height / 2) - (srcRect.top  + srcRect.height / 2));
+        // Horizontal relationship → opposite; vertical relationship → same side
+        return dx >= dy ? OPPOSITE[exitEdge] : exitEdge;
+    }
+
+    // Rule 5: point at index i of n on a given edge (divides edge into n+1 equal parts)
+    function getEdgeCoord(rect, edge, i, n) {
+        const t = (i + 1) / (n + 1);
+        switch (edge) {
+            case 'left':   return { x: rect.left,                    y: rect.top + t * rect.height };
+            case 'right':  return { x: rect.right,                   y: rect.top + t * rect.height };
+            case 'top':    return { x: rect.left + t * rect.width,   y: rect.top    };
+            case 'bottom': return { x: rect.left + t * rect.width,   y: rect.bottom };
+        }
+    }
+
+    // Rule 1: find a clear midpoint for the turning segment, scanning outward if blocked
+    function findClearMidX(preferred, y1, y2, obstacles) {
+        const clear = x => obstacles.every(r => !vSegCrossesRect(x, y1, y2, r));
+        if (clear(preferred)) return preferred;
+        for (let d = 8; d < 400; d += 8) {
+            if (clear(preferred + d)) return preferred + d;
+            if (clear(preferred - d)) return preferred - d;
+        }
+        return preferred;
+    }
+    function findClearMidY(preferred, x1, x2, obstacles) {
+        const clear = y => obstacles.every(r => !hSegCrossesRect(y, x1, x2, r));
+        if (clear(preferred)) return preferred;
+        for (let d = 8; d < 400; d += 8) {
+            if (clear(preferred + d)) return preferred + d;
+            if (clear(preferred - d)) return preferred - d;
+        }
+        return preferred;
+    }
+
+    // Rules 1+3: build Z-shape path, avoid obstacles (source and dest excluded)
+    function buildPath(p1, p2, exitEdge, entryEdge, obstacles) {
+        const isH = exitEdge === 'left' || exitEdge === 'right';
+        if (isH) {
+            let preferred;
+            if (exitEdge === entryEdge) {
+                // Vertical relationship: route outside both boxes on the same side
+                preferred = exitEdge === 'left'
+                    ? Math.min(p1.x, p2.x) - 50
+                    : Math.max(p1.x, p2.x) + 50;
+            } else {
+                // Horizontal relationship: midpoint between the two boxes
+                preferred = (p1.x + p2.x) / 2;
+            }
+            const midX = findClearMidX(preferred, p1.y, p2.y, obstacles);
+            return `M ${p1.x} ${p1.y} H ${midX} V ${p2.y} H ${p2.x}`;
+        } else {
+            const midY = findClearMidY((p1.y + p2.y) / 2, p1.x, p2.x, obstacles);
+            return `M ${p1.x} ${p1.y} V ${midY} H ${p2.x} V ${p2.y}`;
+        }
+    }
+
+    function drawArrows() {
+        fetch('/connections')
+            .then(r => r.json())
+            .then(data => {
+                const svg  = document.getElementById('arrow-layer');
+                const defs = svg.querySelector('defs');
+                svg.innerHTML = '';
+                svg.appendChild(defs);
+
+                const allBoxEls = Array.from(document.querySelectorAll('.subfolder-box'));
+                const conns     = data.connections;
+
+                // === Step 1: collect base info ===
+                const items = [];
+                for (const conn of conns) {
+                    const fromEl = findBox(conn.from);
+                    const toEl   = findBox(conn.to);
+                    if (!fromEl || !toEl) continue;
+                    const fromRect  = fromEl.getBoundingClientRect();
+                    const toRect    = toEl.getBoundingClientRect();
+                    const sameFrame = conn.from.split('/')[0] === conn.to.split('/')[0];
+                    const dx = Math.abs((toRect.left + toRect.width/2)  - (fromRect.left + fromRect.width/2));
+                    const dy = Math.abs((toRect.top  + toRect.height/2) - (fromRect.top  + fromRect.height/2));
+                    const vertRel = !sameFrame && dy > dx;
+                    items.push({ conn, fromEl, toEl, fromRect, toRect, sameFrame, vertRel });
+                }
+
+                // === Step 2: two-pass edge assignment ===
+                const edgeTotal = new Map();
+                const cnt = el => {
+                    if (!edgeTotal.has(el)) edgeTotal.set(el, {left:0,right:0,top:0,bottom:0});
+                    return edgeTotal.get(el);
+                };
+
+                // Pass 1: deterministic edges (horizontal relationship + sameFrame)
+                for (const item of items) {
+                    if (!item.vertRel) {
+                        item.exitEdge  = getExitEdge(item.fromRect, item.toRect, item.sameFrame);
+                        item.entryEdge = getEntryEdge(item.exitEdge, item.fromRect, item.toRect, item.sameFrame);
+                        cnt(item.fromEl)[item.exitEdge]++;
+                        cnt(item.toEl)[item.entryEdge]++;
+                    }
+                }
+
+                // Pass 2: vertical relationship — pick less loaded side (Rule 4 updated)
+                for (const item of items) {
+                    if (item.vertRel) {
+                        const fc = cnt(item.fromEl);
+                        const tc = cnt(item.toEl);
+                        const leftLoad  = fc.left  + tc.left;
+                        const rightLoad = fc.right + tc.right;
+                        item.exitEdge  = leftLoad <= rightLoad ? 'left' : 'right';
+                        item.entryEdge = item.exitEdge;
+                        cnt(item.fromEl)[item.exitEdge]++;
+                        cnt(item.toEl)[item.entryEdge]++;
+                    }
+                }
+
+                // === Step 3: assign coordinates and draw ===
+                const edgeIdx = new Map();
+                const idx = el => {
+                    if (!edgeIdx.has(el)) edgeIdx.set(el, {left:0,right:0,top:0,bottom:0});
+                    return edgeIdx.get(el);
+                };
+
+                for (const { conn, fromEl, toEl, fromRect, toRect, exitEdge, entryEdge } of items) {
+                    const eTotal = edgeTotal.get(fromEl)[exitEdge];
+                    const nTotal = edgeTotal.get(toEl)[entryEdge];
+                    const eIdx   = idx(fromEl)[exitEdge]++;
+                    const nIdx   = idx(toEl)[entryEdge]++;
+
+                    const p1 = getEdgeCoord(fromRect, exitEdge,  eIdx, eTotal);
+                    const p2 = getEdgeCoord(toRect,   entryEdge, nIdx, nTotal);
+
+                    const obstacles = allBoxEls
+                        .filter(el => el !== fromEl && el !== toEl)
+                        .map(el => el.getBoundingClientRect());
+
+                    const d = buildPath(p1, p2, exitEdge, entryEdge, obstacles);
+
+                    // Visual path
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', d);
+                    path.setAttribute('stroke', '#00c8ff');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('opacity', '0.7');
+                    path.setAttribute('marker-end', 'url(#arrowhead)');
+                    path.dataset.to   = conn.to;
+                    path.dataset.from = conn.from;
+                    path.dataset.type = conn.type;
+                    path.style.display       = 'none';
+                    path.style.pointerEvents = 'none';
+                    svg.appendChild(path);
+
+                    if (conn.type === 'Generate') {
+                        const len = path.getTotalLength();
+                        const mid = path.getPointAtLength(len / 2);
+                        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        label.setAttribute('x', mid.x + 6);
+                        label.setAttribute('y', mid.y + 3);
+                        label.setAttribute('text-anchor', 'start');
+                        label.setAttribute('font-size', '9');
+                        label.setAttribute('fill', '#00c8ff');
+                        label.setAttribute('opacity', '0.85');
+                        label.setAttribute('letter-spacing', '0.5');
+                        label.textContent = 'Generate';
+                        label.dataset.to   = conn.to;
+                        label.dataset.from = conn.from;
+                        label.style.display       = 'none';
+                        label.style.pointerEvents = 'none';
+                        svg.appendChild(label);
+                    }
+
+                    // Invisible hit path (wide stroke for easy clicking)
+                    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    hit.setAttribute('d', d);
+                    hit.setAttribute('stroke', 'transparent');
+                    hit.setAttribute('stroke-width', '18');
+                    hit.setAttribute('fill', 'none');
+                    hit.dataset.to   = conn.to;
+                    hit.dataset.from = conn.from;
+                    hit.dataset.type = conn.type;
+                    hit.style.display       = 'none';
+                    hit.style.pointerEvents = 'none';
+                    hit.style.cursor        = 'pointer';
+                    hit.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        openConnection(this.dataset.from, this.dataset.to, this.dataset.type);
+                    });
+                    svg.appendChild(hit);
+                }
+            });
+    }
+
+    window.addEventListener('load',   drawArrows);
+    window.addEventListener('resize', drawArrows);
+
+    // ── Box selection (single click → show incoming arrows) ───────────────
+
+    let _selectedBox = null;
+
+    function selectBox(el) {
+        const key = el.dataset.parent + '/' + el.dataset.sub;
+        const allPaths = document.querySelectorAll('#arrow-layer path, #arrow-layer text');
+
+        if (_selectedBox === el) {
+            _selectedBox = null;
+            el.classList.remove('box-selected');
+            allPaths.forEach(p => { p.style.display = 'none'; p.style.pointerEvents = 'none'; });
+
+            return;
+        }
+
+        if (_selectedBox) _selectedBox.classList.remove('box-selected');
+        _selectedBox = el;
+        el.classList.add('box-selected');
+
+        allPaths.forEach(p => {
+            const visible = p.dataset.to === key;
+            p.style.display = visible ? '' : 'none';
+            // Only hit paths (transparent stroke) get pointer events
+            p.style.pointerEvents = (visible && p.getAttribute('stroke') === 'transparent') ? 'stroke' : 'none';
+        });
+    }
+
+    // ── Connection modal (arrow click) ────────────────────────────────────
+
+    function openConnection(fromKey, toKey, type) {
+        const [toParent, toSub]     = toKey.split('/');
+        const [fromParent, fromSub] = fromKey.split('/');
+        const fromColor = (findBox(fromKey) || {}).dataset?.color || '#00c8ff';
+        const toColor   = (findBox(toKey)   || {}).dataset?.color || '#00c8ff';
+
+        const isGenerate = type === 'Generate';
+        const url = isGenerate
+            ? `/generate-data?from_parent=${encodeURIComponent(fromParent)}&from_sub=${encodeURIComponent(fromSub)}&to_key=${encodeURIComponent(toKey)}`
+            : `/fetch-data?from_key=${encodeURIComponent(fromKey)}&to_parent=${encodeURIComponent(toParent)}&to_sub=${encodeURIComponent(toSub)}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('connTitle').innerHTML =
+                    `<span style="color:${fromColor}">${fromKey}</span>` +
+                    ` <span style="font-size:1.2em;color:#00c8ff;vertical-align:middle;">⟶</span> ` +
+                    `<span style="color:${toColor}">${toKey}</span>`;
+                document.getElementById('connTitle').style.color = '';
+                document.getElementById('connPath').textContent = isGenerate
+                    ? `Generate output to: ${toKey}`
+                    : `Fetch data from: ${toKey}`;
+
+                const thead = document.getElementById('connThead');
+                const tbody = document.getElementById('connTbody');
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+
+                if (data.headers.length) {
+                    const tr = document.createElement('tr');
+                    data.headers.forEach(h => {
+                        const th = document.createElement('th');
+                        th.textContent = h;
+                        tr.appendChild(th);
+                    });
+                    thead.appendChild(tr);
+                }
+
+                if (data.rows.length === 0) {
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.colSpan = data.headers.length || 1;
+                    td.textContent = 'No data found';
+                    td.style.cssText = 'text-align:center;color:#333;font-style:italic;padding:16px';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                } else {
+                    data.rows.forEach(row => {
+                        const tr = document.createElement('tr');
+                        row.forEach(val => {
+                            const td = document.createElement('td');
+                            td.textContent = val;
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                document.getElementById('connOverlay').classList.add('open');
+            });
+    }
+
+    function closeConnModal(e) {
+        if (e.target === document.getElementById('connOverlay'))
+            document.getElementById('connOverlay').classList.remove('open');
+    }
+
+    // ── Modal ──────────────────────────────────────────────────────────────
+
+    function openFiles(el) {
+        const parent     = el.dataset.parent;
+        const sub        = el.dataset.sub;
+        const color      = el.dataset.color;
+
+        const overlay    = document.getElementById('modalOverlay');
+        const title      = document.getElementById('modalTitle');
+        const path       = document.getElementById('modalPath');
+        const personList = document.getElementById('personList');
+        const fileList   = document.getElementById('fileList');
+
+        title.textContent    = sub;
+        title.style.color    = color;
+        path.textContent     = 'Loading...';
+        personList.innerHTML = '<div class="list-empty">Loading...</div>';
+        fileList.innerHTML   = '<div class="list-empty">Loading...</div>';
+        document.getElementById('notifThead').innerHTML = '';
+        document.getElementById('notifTbody').innerHTML = '';
+        document.getElementById('notifTableWrap').style.display = 'none';
+        const notifEmpty = document.getElementById('notifEmpty');
+        notifEmpty.style.display = '';
+        notifEmpty.textContent = 'Loading...';
+        overlay.classList.add('open');
+
+        // Commits (also drives In Charge / Notification for the current level)
+        _commitParent = parent;
+        _commitSub    = sub;
+        _commitPath   = [];
+        loadCommits();
+    }
+
+    let _commitParent = '';
+    let _commitSub    = '';
+    let _commitPath   = [];
+
+    function refreshSettingsPanels() {
+        const personList           = document.getElementById('personList');
+        const inChargeSection      = document.getElementById('inChargeSection');
+        const notificationSection  = document.getElementById('notificationSection');
+        const subParam = _commitPath.length ? `&path=${encodeURIComponent(_commitPath.join('/'))}` : '';
+        const params = `parent=${encodeURIComponent(_commitParent)}&sub=${encodeURIComponent(_commitSub)}${subParam}`;
+
+        inChargeSection.style.display     = '';
+        notificationSection.style.display = '';
+        personList.innerHTML = '<div class="list-empty">Loading...</div>';
+
+        // In Charge
+        fetch(`/access?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.has_setting) {
+                    inChargeSection.style.display = 'none';
+                    return;
+                }
+
+                if (data.people && data.people.length > 0) {
+                    personList.innerHTML = data.people
+                        .map(p => `<div class="person-item">${p}</div>`)
+                        .join('');
+                } else {
+                    personList.innerHTML = '<div class="list-empty">No users found</div>';
+                }
+            });
+
+        // Notification
+        fetch(`/notification?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                const thead      = document.getElementById('notifThead');
+                const tbody      = document.getElementById('notifTbody');
+                const tableWrap  = document.getElementById('notifTableWrap');
+                const notifEmpty = document.getElementById('notifEmpty');
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+
+                if (!data.has_setting) {
+                    notificationSection.style.display = 'none';
+                    return;
+                }
+
+                if (!data.rows || data.rows.length === 0) {
+                    tableWrap.style.display = 'none';
+                    notifEmpty.style.display = '';
+                    notifEmpty.textContent = 'No notification rules';
+                    return;
+                }
+
+                tableWrap.style.display = '';
+                notifEmpty.style.display = 'none';
+
+                if (data.headers && data.headers.length) {
+                    const tr = document.createElement('tr');
+                    data.headers.forEach(h => {
+                        const th = document.createElement('th');
+                        th.textContent = h;
+                        tr.appendChild(th);
+                    });
+                    thead.appendChild(tr);
+                }
+
+                data.rows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    row.forEach(val => {
+                        const td = document.createElement('td');
+                        td.textContent = val;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function loadCommits() {
+        const fileList = document.getElementById('fileList');
+        const path     = document.getElementById('modalPath');
+        const title    = document.getElementById('modalTitle');
+        const subParam = _commitPath.length ? `&path=${encodeURIComponent(_commitPath.join('/'))}` : '';
+
+        title.textContent = _commitPath.length ? _commitPath[_commitPath.length - 1] : _commitSub;
+        path.textContent = {{ root | tojson }} + '\\' + _commitParent + '\\' + _commitSub +
+            (_commitPath.length ? '\\' + _commitPath.join('\\') : '');
+        fileList.innerHTML = '<div class="list-empty">Loading...</div>';
+        refreshSettingsPanels();
+
+        fetch(`/files?parent=${encodeURIComponent(_commitParent)}&sub=${encodeURIComponent(_commitSub)}${subParam}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    fileList.innerHTML = `<div class="list-empty">${data.error}</div>`;
+                    return;
+                }
+
+                if (data.files.length === 0 && _commitPath.length === 0) {
+                    fileList.innerHTML = '<div class="list-empty">No committed files</div>';
+                    return;
+                }
+
+                let html = '';
+                if (_commitPath.length > 0) {
+                    html += `<div class="file-item folder-item" style="cursor:pointer" onclick="goUpCommits()" title="Go back">
+                        <span class="file-name">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M15 18l-6-6 6-6"/>
+                            </svg>
+                            ..
+                        </span>
+                    </div>`;
+                }
+
+                html += data.files
+                    .map(f => {
+                        if (f.is_dir) {
+                            const safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            return `<div class="file-item folder-item" style="cursor:pointer" onclick="enterCommitFolder('${safeName}')" title="Open folder">
+                                <span class="file-name">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                                    </svg>
+                                    ${f.name}
+                                </span>
+                            </div>`;
+                        }
+                        const url = `/download?parent=${encodeURIComponent(_commitParent)}&sub=${encodeURIComponent(_commitSub)}${subParam}&file=${encodeURIComponent(f.name)}`;
+                        return `<div class="file-item">
+                            <span>${f.name}</span>
+                            <a class="download-btn" href="${url}" download title="Download">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </a>
+                        </div>`;
+                    })
+                    .join('');
+
+                fileList.innerHTML = html;
+            });
+    }
+
+    function enterCommitFolder(name) {
+        _commitPath.push(name);
+        loadCommits();
+    }
+
+    function goUpCommits() {
+        _commitPath.pop();
+        loadCommits();
+    }
+
+    function closeModal(event) {
+        if (event.target === document.getElementById('modalOverlay')) {
+            document.getElementById('modalOverlay').classList.remove('open');
+        }
+    }
+
+    function closeModalDirect() {
+        document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeModalDirect();
+    });
+</script>
+
+</body>
+</html>
