@@ -7,13 +7,13 @@ import openpyxl
 from flask import Flask, render_template, jsonify, request, send_file
 
 def get_base_dir():
-    """پوشه‌ای که exe (یا script) در آن قرار دارد."""
+    """Folder containing the exe (or script)."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
 def get_resource_dir():
-    """پوشه حاوی templates و static — داخل bundle یا کنار script."""
+    """Folder containing templates and static — inside the bundle or next to the script."""
     if getattr(sys, 'frozen', False):
         return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
@@ -56,11 +56,25 @@ NEON_COLORS = [
 
 PROCESS_COLOR = {'text': '#ffb400', 'border': 'rgba(255,180,0,0.45)', 'glow': 'rgba(255,180,0,0.15)'}
 
-FOLDER_POSITIONS = {
+def _parse_folder_positions(raw):
+    # Format: "Mechanic:right,Instrument:left,Piping:top"
+    positions = {}
+    for pair in raw.split(','):
+        pair = pair.strip()
+        if not pair or ':' not in pair:
+            continue
+        name, _, pos = pair.partition(':')
+        name, pos = name.strip(), pos.strip()
+        if name and pos:
+            positions[name] = pos
+    return positions
+
+_DEFAULT_FOLDER_POSITIONS = {
     'Mechanic':  'right',
     'Instrument': 'left',
     'Piping':    'top',
 }
+FOLDER_POSITIONS = _parse_folder_positions(_cfg['FOLDER_POSITIONS']) if _cfg.get('FOLDER_POSITIONS') else _DEFAULT_FOLDER_POSITIONS
 
 # ── Settings cache (loaded once at startup) ──────────────────────────────────
 # Key: "FolderName/SubfolderName"
