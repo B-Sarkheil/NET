@@ -297,12 +297,17 @@ def index():
         if pos in zones:
             zones[pos].append(folder)
 
+    has_middle = bool(zones['left']) or bool(zones['right']) or bool(process)
+    row_count = sum([bool(zones['top']), has_middle, bool(zones['bottom'])]) or 1
+
     return render_template('index.html',
                            process=process,
                            top=zones['top'],
                            right=zones['right'],
                            bottom=zones['bottom'],
                            left=zones['left'],
+                           row_count=row_count,
+                           has_middle=has_middle,
                            root=SOURCE_PATH)
 
 

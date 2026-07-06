@@ -202,7 +202,7 @@
         }
 
         .root-path {
-            margin-top: 10px;
+            margin-top: 2px;
             font-size: 0.72rem;
             color: #666;
             letter-spacing: 1px;
@@ -212,9 +212,11 @@
         .grid-wrapper {
             flex: 1;
             display: grid;
-            grid-template-rows: 1fr 1fr 1fr;
-            gap: 12px;
+            grid-template-rows: auto auto auto;
+            align-content: safe center;
+            gap: 36px;
             min-height: 0;
+            overflow-y: auto;
         }
 
         .row {
@@ -245,7 +247,7 @@
         /* ── Frame ── */
         .frame {
             border-radius: 10px;
-            padding: 14px 36px 36px;
+            padding: 14px 36px 20px;
             min-width: 260px;
             background: rgba(255,255,255,0.02);
             backdrop-filter: blur(4px);
@@ -337,12 +339,19 @@
             flex-shrink: 0;
         }
 
+        .modal-title-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
         .modal-title {
             font-size: 1.2rem;
             font-weight: 900;
             letter-spacing: 3px;
             text-transform: uppercase;
-            flex: 1;
             text-align: center;
         }
 
@@ -362,17 +371,27 @@
             font-size: 0.68rem;
             color: #444;
             letter-spacing: 0.5px;
-            padding: 12px 32px 0;
-            flex-shrink: 0;
+            text-align: center;
         }
 
         .modal-body {
             overflow-y: auto;
             min-height: 0;
-            padding: 16px 32px 28px;
+            padding: 16px 32px 8px;
+        }
+
+        /* Flex layout lives on an inner wrapper, not on .modal-body itself —
+           browsers clip the bottom padding of a flex container once its
+           content overflows, so the scroll box and the flex box can't be the same element. */
+        .modal-body-inner {
             display: flex;
             flex-direction: column;
             gap: 16px;
+        }
+
+        .modal-body-spacer {
+            flex-shrink: 0;
+            height: 20px;
         }
 
         .modal-section-title {
@@ -434,12 +453,6 @@
 
         .notif-table tr:last-child td { border-bottom: none; }
         .notif-table tr:hover td { background: rgba(255,149,0,0.04); }
-
-        .modal-divider {
-            border: none;
-            border-top: 1px solid rgba(255,255,255,0.06);
-            margin: 4px 0;
-        }
 
         .person-list, .file-list {
             display: flex;
@@ -559,25 +572,29 @@
         .conn-table tr:hover td { background: rgba(255,255,255,0.03); }
 
         /* Dark scrollbars */
-        .conn-table-wrap, .notif-table-wrap, .modal-body {
+        .conn-table-wrap, .notif-table-wrap, .modal-body, .grid-wrapper {
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.12) transparent;
         }
         .conn-table-wrap::-webkit-scrollbar,
         .notif-table-wrap::-webkit-scrollbar,
-        .modal-body::-webkit-scrollbar { width: 6px; height: 6px; }
+        .modal-body::-webkit-scrollbar,
+        .grid-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
         .conn-table-wrap::-webkit-scrollbar-track,
         .notif-table-wrap::-webkit-scrollbar-track,
-        .modal-body::-webkit-scrollbar-track { background: transparent; }
+        .modal-body::-webkit-scrollbar-track,
+        .grid-wrapper::-webkit-scrollbar-track { background: transparent; }
         .conn-table-wrap::-webkit-scrollbar-thumb,
         .notif-table-wrap::-webkit-scrollbar-thumb,
-        .modal-body::-webkit-scrollbar-thumb {
+        .modal-body::-webkit-scrollbar-thumb,
+        .grid-wrapper::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.12);
             border-radius: 4px;
         }
         .conn-table-wrap::-webkit-scrollbar-thumb:hover,
         .notif-table-wrap::-webkit-scrollbar-thumb:hover,
-        .modal-body::-webkit-scrollbar-thumb:hover {
+        .modal-body::-webkit-scrollbar-thumb:hover,
+        .grid-wrapper::-webkit-scrollbar-thumb:hover {
             background: rgba(255,255,255,0.25);
         }
 
@@ -677,16 +694,19 @@
 </div>
 {% endmacro %}
 
-<div class="grid-wrapper">
+<div class="grid-wrapper" style="grid-template-rows: repeat({{ row_count }}, auto);">
 
     <!-- Top row -->
+    {% if top %}
     <div class="row">
         {% for f in top %}
         {{ render_frame(f) }}
         {% endfor %}
     </div>
+    {% endif %}
 
     <!-- Middle row: left | Process | right -->
+    {% if has_middle %}
     <div class="middle-row">
 
         <div class="side-col">
@@ -732,13 +752,16 @@
         </div>
 
     </div>
+    {% endif %}
 
     <!-- Bottom row -->
+    {% if bottom %}
     <div class="row">
         {% for f in bottom %}
         {{ render_frame(f) }}
         {% endfor %}
     </div>
+    {% endif %}
 
 </div>
 
@@ -747,33 +770,39 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
     <div class="modal">
         <div class="modal-header">
-            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-title-wrap">
+                <div class="modal-title" id="modalTitle"></div>
+                <div class="modal-path" id="modalPath"></div>
+            </div>
             <button class="modal-close" onclick="closeModalDirect()">×</button>
         </div>
-        <div class="modal-path" id="modalPath"></div>
 
         <div class="modal-body">
-            <div id="inChargeSection">
-                <div class="modal-section-title section-incharge">In Charge</div>
-                <div class="person-list" id="personList"></div>
-                <hr class="modal-divider">
-            </div>
-
-            <div class="modal-section-title section-commits">Commits</div>
-            <div class="file-list" id="fileList"></div>
-
-            <div id="notificationSection">
-                <hr class="modal-divider">
-                <div class="modal-section-title section-notification">Notification</div>
-                <div class="notif-table-wrap" id="notifTableWrap">
-                    <table class="notif-table">
-                        <thead id="notifThead"></thead>
-                        <tbody id="notifTbody"></tbody>
-                    </table>
+            <div class="modal-body-inner">
+                <div id="inChargeSection">
+                    <div class="modal-section-title section-incharge">In Charge</div>
+                    <div class="person-list" id="personList"></div>
                 </div>
-                <div class="list-empty" id="notifEmpty" style="display:none"></div>
+
+                <div id="commitsSection">
+                    <div class="modal-section-title section-commits">Commits</div>
+                    <div class="file-list" id="fileList"></div>
+                </div>
+
+                <div id="notificationSection">
+                    <div class="modal-section-title section-notification">Notification</div>
+                    <div class="notif-table-wrap" id="notifTableWrap">
+                        <table class="notif-table">
+                            <thead id="notifThead"></thead>
+                            <tbody id="notifTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="list-empty" id="notifEmpty" style="display:none"></div>
+                </div>
             </div>
         </div>
+
+        <div class="modal-body-spacer"></div>
     </div>
 </div>
 
@@ -781,10 +810,12 @@
 <div class="modal-overlay" id="connOverlay" onclick="closeConnModal(event)">
     <div class="conn-modal">
         <div class="modal-header">
-            <div class="modal-title" id="connTitle"></div>
+            <div class="modal-title-wrap">
+                <div class="modal-title" id="connTitle"></div>
+                <div class="modal-path" id="connPath"></div>
+            </div>
             <button class="modal-close" onclick="document.getElementById('connOverlay').classList.remove('open')">×</button>
         </div>
-        <div class="modal-path" id="connPath"></div>
         <div class="conn-table-wrap">
             <table class="conn-table">
                 <thead id="connThead"></thead>
@@ -1036,38 +1067,62 @@
                     });
                     svg.appendChild(hit);
                 }
+
+                applySelection();
             });
     }
 
     window.addEventListener('load',   drawArrows);
     window.addEventListener('resize', drawArrows);
 
+    // Arrows are positioned via getBoundingClientRect() against a fixed overlay,
+    // so scrolling the folder grid moves the boxes without moving the arrows —
+    // redraw (rAF-throttled) whenever that container scrolls.
+    (function () {
+        const gridWrapperEl = document.querySelector('.grid-wrapper');
+        if (!gridWrapperEl) return;
+        let rafPending = false;
+        gridWrapperEl.addEventListener('scroll', () => {
+            if (rafPending) return;
+            rafPending = true;
+            requestAnimationFrame(() => {
+                rafPending = false;
+                drawArrows();
+            });
+        });
+    })();
+
     // ── Box selection (single click → show incoming arrows) ───────────────
 
     let _selectedBox = null;
 
-    function selectBox(el) {
-        const key = el.dataset.parent + '/' + el.dataset.sub;
+    // Re-applies the current box selection's arrow visibility. Called after
+    // selectBox() toggles _selectedBox, and again after every drawArrows()
+    // rebuild (e.g. on scroll) since freshly-created elements default to hidden.
+    function applySelection() {
         const allPaths = document.querySelectorAll('#arrow-layer path, #arrow-layer text');
+        const key = _selectedBox ? _selectedBox.dataset.parent + '/' + _selectedBox.dataset.sub : null;
 
+        allPaths.forEach(p => {
+            const visible = key !== null && p.dataset.to === key;
+            p.style.display = visible ? '' : 'none';
+            // Only hit paths (transparent stroke) get pointer events
+            p.style.pointerEvents = (visible && p.getAttribute('stroke') === 'transparent') ? 'stroke' : 'none';
+        });
+    }
+
+    function selectBox(el) {
         if (_selectedBox === el) {
             _selectedBox = null;
             el.classList.remove('box-selected');
-            allPaths.forEach(p => { p.style.display = 'none'; p.style.pointerEvents = 'none'; });
-
+            applySelection();
             return;
         }
 
         if (_selectedBox) _selectedBox.classList.remove('box-selected');
         _selectedBox = el;
         el.classList.add('box-selected');
-
-        allPaths.forEach(p => {
-            const visible = p.dataset.to === key;
-            p.style.display = visible ? '' : 'none';
-            // Only hit paths (transparent stroke) get pointer events
-            p.style.pointerEvents = (visible && p.getAttribute('stroke') === 'transparent') ? 'stroke' : 'none';
-        });
+        applySelection();
     }
 
     // ── Connection modal (arrow click) ────────────────────────────────────

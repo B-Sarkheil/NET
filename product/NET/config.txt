@@ -5,4 +5,4 @@ SOURCE_PATH = D:\Behnam\NET\simulation\fs
 COMMIT_PATH = D:\Behnam\NET\simulation\fs - files
 
 # Position of each top-level folder box in the flowchart layout (left/right/top)
-FOLDER_POSITIONS = Mechanic:right,Instrument:left,Piping:top
+FOLDER_POSITIONS = Mechanic:right,Instrument:left,Piping:bottom
